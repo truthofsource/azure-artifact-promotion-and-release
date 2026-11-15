@@ -151,6 +151,10 @@ The local model is deliberately small and does not authenticate an operator or s
 
 ## Related Projects
 
-- [Secure container delivery and rollback](https://github.com/truthofsource/secure-container-delivery-and-rollback): image packaging, signatures and retained-image selection.
+- [Secure container delivery and rollback](https://github.com/truthofsource/azure-container-lifecycle/tree/main/examples/signed-container-delivery): image packaging, signatures and retained-image selection.
 - [Container lifecycle](https://github.com/truthofsource/azure-container-lifecycle): a worker image from build through deployment.
-- [Platform operations and recovery](https://github.com/truthofsource/platform-operations-and-recovery): broader operational recovery boundaries.
+- [Platform operations and recovery](https://github.com/truthofsource/azure-backup-and-recovery/tree/main/examples/operational-recovery): broader operational recovery boundaries.
+
+## Extended Rollback Reference
+
+The [preserved package-rollback decision model](reference/package-rollback/README.md) adds exact workflow/run binding, compatibility and state-preservation examples. Container image signing remains in the [container lifecycle project](https://github.com/truthofsource/azure-container-lifecycle/tree/main/examples/signed-container-delivery).
