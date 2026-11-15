@@ -1,0 +1,90 @@
+# Teaching template. Stored outside .github/workflows; it does not run here.
+# Implement the adapter contract in examples/workflows/README.md before activation.
+name: Promote an exact archived release
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character archived source commit
+        type: string
+        required: true
+      api_sha256:
+        description: Exact API ZIP SHA-256
+        type: string
+        required: true
+      web_sha256:
+        description: Exact web ZIP SHA-256
+        type: string
+        required: true
+      migration_set_sha256:
+        description: Packaged migration-set hash; publishing does not apply migrations
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+# Release and rollback share ONE publication lock in the same repository.
+concurrency:
+  group: project-production-publication
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: project-production
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      API_SHA256: ${{ inputs.api_sha256 }}
+      WEB_SHA256: ${{ inputs.web_sha256 }}
+      MIGRATION_SHA256: ${{ inputs.migration_set_sha256 }}
+      ADAPTER_COMMISSIONED: ${{ vars.RELEASE_ADAPTER_COMMISSIONED }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate exact request and trusted execution context
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$ADAPTER_COMMISSIONED" = true
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for value in "$API_SHA256" "$WEB_SHA256" "$MIGRATION_SHA256"; do
+            [[ "$value" =~ ^[0-9a-f]{64}$ ]]
+          done
+          test -f scripts/cloud_release_adapter.py
+      - uses: azure/login@v2
+        id: azure
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Retrieve retained ZIPs and verify trusted acceptance evidence
+        run: python -B scripts/cloud_release_adapter.py retrieve-and-verify
+      - name: Check target, schema compatibility and preserved settings
+        run: python -B scripts/cloud_release_adapter.py preflight
+      # The same adapter publication entry point is used for rollback.
+      # No source checkout at SOURCE_SHA, npm build or docker build happens here.
+      - name: Publish the selected packages without rebuilding
+        run: python -B scripts/cloud_release_adapter.py publish
+      - name: Verify health, anonymous denial, assets and settings preservation
+        run: python -B scripts/cloud_release_adapter.py verify
+      - name: Record active release only after successful verification
+        run: python -B scripts/cloud_release_adapter.py record
+      - name: Restore only temporary state recorded by this run
+        if: always() && steps.azure.outcome == 'success'
+        run: python -B scripts/cloud_release_adapter.py cleanup
+      - name: Retain safe evidence even if publication or verification failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-receipt-${{ github.run_id }}
+          path: receipts/
+          if-no-files-found: warn
+          retention-days: 30

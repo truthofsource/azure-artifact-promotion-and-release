@@ -1,0 +1,15 @@
+Local Python standard-library test run, 2026-11-15
+
+test_concurrent_publication_lock_rejected (test_promotion.PromotionTests.test_concurrent_publication_lock_rejected) ... ok
+test_drift_rejected (test_promotion.PromotionTests.test_drift_rejected) ... ok
+test_expired_candidate_rejected (test_promotion.PromotionTests.test_expired_candidate_rejected) ... ok
+test_package_tamper_rejected (test_promotion.PromotionTests.test_package_tamper_rejected) ... ok
+test_release_and_exact_rollback_preserve_settings (test_promotion.PromotionTests.test_release_and_exact_rollback_preserve_settings) ... ok
+test_same_target_rejected (test_promotion.PromotionTests.test_same_target_rejected) ... ok
+test_schema_conflict_rejected (test_promotion.PromotionTests.test_schema_conflict_rejected) ... ok
+test_wrong_approval_and_duplicate_execution_rejected (test_promotion.PromotionTests.test_wrong_approval_and_duplicate_execution_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.392s
+
+OK

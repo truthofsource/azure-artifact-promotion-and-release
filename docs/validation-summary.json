@@ -1,0 +1,11 @@
+{
+  "yaml_parsed": [
+    "release.yml",
+    "rollback.yml"
+  ],
+  "bash_syntax_checked": true,
+  "local_links_valid": true,
+  "tests_passed": 8,
+  "cloud_executed": false,
+  "actions_dispatched": false
+}

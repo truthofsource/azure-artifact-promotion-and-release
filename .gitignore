@@ -1,0 +1,7 @@
+work/
+*.candidate.json
+__pycache__/
+.venv/
+.env*
+*.key
+*.pem

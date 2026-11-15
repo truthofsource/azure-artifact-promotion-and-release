@@ -1,0 +1,114 @@
+# Teaching template. This is not the platform's commissioned rollback workflow.
+# Account-bound authorization and the cloud adapter must be implemented first.
+name: Prepare or execute an exact retained-package rollback
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [prepare, execute]
+        default: prepare
+        required: true
+      request_json:
+        description: Prepare only; exact current/target hashes and incident reason
+        type: string
+        required: false
+      candidate_run_id:
+        description: Execute only; successful preparation run in this repository
+        type: string
+        required: false
+      candidate_sha256:
+        description: Execute only; hash of the exact reviewed candidate bytes
+        type: string
+        required: false
+permissions:
+  contents: read
+  actions: read
+# This sample publishes in-process; it never waits for a child publisher holding
+# the same lock. A dispatcher design must leave the parent outside this lock.
+concurrency:
+  group: project-production-publication
+  cancel-in-progress: false
+jobs:
+  rollback:
+    runs-on: ${{ vars.ROLLBACK_PRIVATE_RUNNER }}
+    timeout-minutes: 30
+    environment: project-production
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      OPERATION: ${{ inputs.operation }}
+      REQUEST_JSON: ${{ inputs.request_json }}
+      CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+      CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+      ADAPTER_COMMISSIONED: ${{ vars.RELEASE_ADAPTER_COMMISSIONED }}
+      APPROVED_OPERATOR_ID: ${{ vars.ROLLBACK_OPERATOR_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate the separate preparation or execution request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$ADAPTER_COMMISSIONED" = true
+          test -f scripts/cloud_release_adapter.py
+          if [ "$OPERATION" = prepare ]; then
+            test -n "$REQUEST_JSON"
+            test -z "$CANDIDATE_RUN_ID$CANDIDATE_SHA256"
+          else
+            test "$OPERATION" = execute
+            test -z "$REQUEST_JSON"
+            [[ "$CANDIDATE_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+            [[ "$CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+            [[ "$APPROVED_OPERATOR_ID" =~ ^[1-9][0-9]*$ ]]
+            test "$GITHUB_ACTOR_ID" = "$APPROVED_OPERATOR_ID"
+            test "$GITHUB_TRIGGERING_ACTOR" = "$GITHUB_ACTOR"
+          fi
+      - uses: azure/login@v2
+        id: azure
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Prepare a fresh, read-only compatibility candidate
+        if: inputs.operation == 'prepare'
+        run: python -B scripts/cloud_release_adapter.py prepare-rollback
+      - name: Retain the exact candidate for a separate operator decision
+        if: inputs.operation == 'prepare'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-candidate-${{ github.run_id }}
+          path: |
+            candidate.json
+            candidate.sha256
+          if-no-files-found: error
+          retention-days: 7
+      - name: Resolve and revalidate the approved candidate under the lock
+        if: inputs.operation == 'execute'
+        run: python -B scripts/cloud_release_adapter.py resolve-and-revalidate
+      - name: Publish earlier retained packages through the same publisher
+        if: inputs.operation == 'execute'
+        run: python -B scripts/cloud_release_adapter.py publish
+      - name: Verify restored binding, health, access boundary and settings
+        if: inputs.operation == 'execute'
+        run: python -B scripts/cloud_release_adapter.py verify
+      - name: Record restored release only after successful verification
+        if: inputs.operation == 'execute'
+        run: python -B scripts/cloud_release_adapter.py record
+      - name: Restore only temporary state recorded by this run
+        if: always() && steps.azure.outcome == 'success'
+        run: python -B scripts/cloud_release_adapter.py cleanup
+      - name: Retain safe preparation/execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-receipt-${{ github.run_id }}
+          path: receipts/
+          if-no-files-found: warn
+          retention-days: 30
