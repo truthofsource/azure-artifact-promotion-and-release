@@ -1,5 +1,9 @@
 # Azure Artifact Promotion and Verified Release
 
+[![Artifact promotion and rollback — illustrated overview](docs/diagrams/architecture.png)](docs/diagrams/architecture.svg)
+
+[View SVG](docs/diagrams/architecture.svg) · [Download PNG](docs/diagrams/architecture.png) · [Edit in draw.io](docs/diagrams/architecture.drawio)
+
 **Build once, prove the package in nonproduction, and promote that same package to production.**
 
 [The problem](#the-business-problem) · [The solution](#the-solution) · [What was built](#what-was-built) · [Step by step](#step-by-step) · [Proof](#proof-it-works) · [Workflow YAMLs](examples/workflows/README.md)
@@ -35,18 +39,7 @@ The platform uses multiple workflows for candidate verification, archive, prefli
 
 ## System at a Glance
 
-```mermaid
-flowchart LR
-    A[Reviewed source] --> B[Build once]
-    B --> C[Nonproduction acceptance]
-    C --> D[Archive exact API and web ZIPs]
-    D --> E[Preflight and release decision]
-    E --> F[Production publication]
-    F --> G[Health, access and asset verification]
-    D --> H[Prepare prior-release rollback]
-    H --> I[Approve exact candidate and recheck]
-    I --> F
-```
+[View the illustrated project overview](docs/diagrams/architecture.svg).
 
 See [the architecture and identity paths](docs/ARCHITECTURE.md) for package, configuration, runner and database boundaries.
 
@@ -138,8 +131,6 @@ Keep the successful/denied results and explain why a retained artifact differs f
 ## Proof It Works
 
 [Local test results](docs/validation-results.txt) record eight passing checks from this implementation. They prove the model's decision behavior, not that an Azure release ran from these example workflows.
-
-![Observed local test summary](docs/images/local-validation.svg)
 
 The real platform's accepted release process is the design source, while this public project contains fictional inputs and newly executed local tests. No production promotion, rollback, identity change, resource activation, message or GitHub Actions dispatch was performed to create this project.
 

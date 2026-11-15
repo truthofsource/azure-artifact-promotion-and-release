@@ -1,20 +1,19 @@
 # Architecture and publication boundaries
 
-```mermaid
-flowchart TD
-    Source[Reviewed source and dependency locks] --> Build[Build API and web once]
-    Build --> NP[Publish and accept in nonproduction]
-    NP --> Evidence[Source run, package hashes and acceptance receipts]
-    Evidence --> Archive[Retained API ZIP and web ZIP]
-    Archive --> Preflight[Verify exact packages and target compatibility]
-    Preflight --> Decision[Approve exact selected release]
-    Decision --> Publisher[One serialized production publisher]
-    Publisher --> Readback[Health, access, asset hashes and settings readback]
-    Readback --> Active[Record active release only after verification]
-    Archive --> Prepare[Prepare prior-release rollback candidate]
-    Prepare --> Recheck[Approve candidate hash and recheck current state]
-    Recheck --> Publisher
-```
+1. **Reviewed source and dependency locks** → **Build API and web once**.
+2. **Build API and web once** → **Publish and accept in nonproduction**.
+3. **Publish and accept in nonproduction** → **Source run, package hashes and acceptance receipts**.
+4. **Source run, package hashes and acceptance receipts** → **Retained API ZIP and web ZIP**.
+5. **Retained API ZIP and web ZIP** → **Verify exact packages and target compatibility**.
+6. **Verify exact packages and target compatibility** → **Approve exact selected release**.
+7. **Approve exact selected release** → **One serialized production publisher**.
+8. **One serialized production publisher** → **Health, access, asset hashes and settings readback**.
+9. **Health, access, asset hashes and settings readback** → **Record active release only after verification**.
+10. **Retained API ZIP and web ZIP** → **Prepare prior-release rollback candidate**.
+11. **Prepare prior-release rollback candidate** → **Approve candidate hash and recheck current state**.
+12. **Approve candidate hash and recheck current state** → **One serialized production publisher**.
+
+[View the illustrated project overview](diagrams/architecture.svg).
 
 The build and nonproduction stages produce evidence; promotion consumes it. No build command belongs in the production promotion stage.
 
